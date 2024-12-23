@@ -1,0 +1,37 @@
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+books_file_path = '/mnt/data/extracted_data/Books.csv'
+books_df = pd.read_csv(books_file_path, usecols=['Book-Title', 'Book-Author', 'Publisher', 'Year-Of-Publication'])
+
+books_df['Combined_Features'] = (
+    books_df['Book-Title'].fillna('') + ' ' +
+    books_df['Book-Author'].fillna('') + ' ' +
+    books_df['Publisher'].fillna('') + ' ' +
+    books_df['Year-Of-Publication'].fillna('')
+)
+
+vectorizer = TfidfVectorizer(stop_words='english')
+feature_matrix = vectorizer.fit_transform(books_df['Combined_Features'])
+
+similarity_matrix = cosine_similarity(feature_matrix)
+
+def recommend_books(title, num_recommendations=5):
+    if title not in books_df['Book-Title'].values:
+        return f"'{title}' is not in the dataset. Please try another book."
+
+    book_index = books_df[books_df['Book-Title'] == title].index[0]
+
+    similarity_scores = list(enumerate(similarity_matrix[book_index]))
+
+    sorted_books = sorted(similarity_scores, key=lambda x: x[1], reverse=True)
+
+    recommended_indices = [i[0] for i in sorted_books[1:num_recommendations + 1]]
+
+    return books_df.iloc[recommended_indices][['Book-Title', 'Book-Author', 'Publisher']]
+
+book_to_recommend = 'Classical Mythology'
+recommendations = recommend_books(book_to_recommend)
+print(f"Books similar to '{book_to_recommend}':")
+print(recommendations)
